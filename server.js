@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import ffmpeg from 'fluent-ffmpeg'
 import qrcode from 'qrcode-terminal'
+import { URL } from 'url'
 
 /**
  * Kompres video dengan ffmpeg
@@ -21,6 +22,23 @@ async function compressVideo(inputPath, outputPath) {
       .on("end", () => resolve(outputPath))
       .on("error", (err) => reject(err))
   })
+}
+
+/**
+ * Deteksi nama sosmed dari URL
+ */
+function detectPlatform(url) {
+  try {
+    const hostname = new URL(url).hostname
+    if (hostname.includes("tiktok")) return "TikTok"
+    if (hostname.includes("instagram")) return "Instagram"
+    if (hostname.includes("youtube") || hostname.includes("youtu.be")) return "YouTube"
+    if (hostname.includes("twitter") || hostname.includes("x.com")) return "Twitter"
+    if (hostname.includes("facebook")) return "Facebook"
+    return "sosial media"
+  } catch {
+    return "sosial media"
+  }
 }
 
 /**
@@ -73,12 +91,13 @@ async function startSock() {
     if (!urls) return
 
     for (let url of urls) {
+      const platform = detectPlatform(url)
       const fileName = `video_${Date.now()}.mp4`
       const filePath = path.resolve(fileName)
       const compressedPath = path.resolve(`compressed_${fileName}`)
 
       try {
-        await sock.sendMessage(jid, { text: `⏳ Sedang download video...\n\n🔗 ${url}` })
+        await sock.sendMessage(jid, { text: `⏳ Sedang mendownload video dari *${platform}*...` })
 
         // Download via yt-dlp-exec
         await ytdlp(url, {
@@ -99,12 +118,12 @@ async function startSock() {
         // Kirim video
         await sock.sendMessage(jid, {
           video: fs.readFileSync(finalPath),
-          caption: "✅ Nih videonya!"
+          caption: `✅ Berhasil download dari *${platform}*!`
         })
 
       } catch (err) {
         console.error("❌ Error:", err)
-        await sock.sendMessage(jid, { text: "❌ Gagal download atau kirim video." })
+        await sock.sendMessage(jid, { text: `❌ Gagal download video dari *${platform}*.` })
       } finally {
         // Hapus file dari VPS setelah selesai
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath)

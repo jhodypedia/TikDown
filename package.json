@@ -1,7 +1,7 @@
 {
   "name": "botwa",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simple bot whatsapp baileys and yt-dlp-exec integration",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "start": "node server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "JhodyPedia",
   "license": "ISC",
   "dependencies": {
     "baileys": "^6.7.18",

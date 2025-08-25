@@ -34,3 +34,5 @@ compressed_*.mp4
 # Backup / temp files
 *.bak
 *.tmp
+ 
+package-lock.json

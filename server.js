@@ -14,8 +14,8 @@ async function compressVideo(inputPath, outputPath) {
     ffmpeg(inputPath)
       .outputOptions([
         "-vf scale=720:-1", // resize max 720p
-        "-crf 28",          // kualitas (angka besar = ukuran lebih kecil)
-        "-preset veryfast"  // lebih cepat
+        "-crf 28",          // kualitas (besar = kecil ukuran)
+        "-preset veryfast"  // kecepatan kompres
       ])
       .save(outputPath)
       .on("end", () => resolve(outputPath))
@@ -61,36 +61,42 @@ async function startSock() {
     if (!m.message || !m.key.remoteJid) return
 
     const jid = m.key.remoteJid
-
-    // ❌ Abaikan pesan dari group
-    if (jid.endsWith('@g.us')) return
+    if (jid.endsWith('@g.us')) return // ❌ Abaikan group
 
     // Ambil teks pesan
     const text = m.message.conversation || m.message.extendedTextMessage?.text
     if (!text) return
 
-    // ✅ Deteksi link TikTok
-    if (text.includes('tiktok.com')) {
-      const fileName = `tiktok_${Date.now()}.mp4`
+    // Deteksi URL dalam pesan
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const urls = text.match(urlRegex)
+    if (!urls) return
+
+    for (let url of urls) {
+      const fileName = `video_${Date.now()}.mp4`
       const filePath = path.resolve(fileName)
       const compressedPath = path.resolve(`compressed_${fileName}`)
 
       try {
-        await sock.sendMessage(jid, { text: "⏳ Sedang download video TikTok..." })
+        await sock.sendMessage(jid, { text: `⏳ Sedang download video...\n\n🔗 ${url}` })
 
         // Download via yt-dlp-exec
-        await ytdlp(text, { output: filePath })
+        await ytdlp(url, {
+          output: filePath,
+          format: "mp4",
+        })
 
         const stats = fs.statSync(filePath)
         let finalPath = filePath
 
-        // Jika > 64MB, kompres dulu
+        // Jika > 64MB, kompres
         if (stats.size > 64 * 1024 * 1024) {
           await sock.sendMessage(jid, { text: "⚡ Video terlalu besar, sedang dikompres..." })
           await compressVideo(filePath, compressedPath)
           finalPath = compressedPath
         }
 
+        // Kirim video
         await sock.sendMessage(jid, {
           video: fs.readFileSync(finalPath),
           caption: "✅ Nih videonya!"
@@ -100,7 +106,7 @@ async function startSock() {
         console.error("❌ Error:", err)
         await sock.sendMessage(jid, { text: "❌ Gagal download atau kirim video." })
       } finally {
-        // 🔥 Hapus file dari VPS setelah selesai
+        // Hapus file dari VPS setelah selesai
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
         if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath)
       }
@@ -108,5 +114,5 @@ async function startSock() {
   })
 }
 
-// Mulai bot
+// 🚀 Mulai bot
 startSock()
